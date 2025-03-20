@@ -151,28 +151,15 @@ First git clone this repository, and the [TrackLab framework](https://github.com
 ```bash
 mkdir soccernet
 cd soccernet
-git clone https://github.com/SoccerNet/sn-gamestate.git
-git clone https://github.com/TrackingLaboratory/tracklab.git
+git clone https://github.com/eidos-ai/sn-gamestate-fork.git
 ```
 
 > [!NOTE]
 > If you are using an IDE (like PyCharm or VS Code), we suggest creating a single project with `soccernet` as root directory.
 > Instructions : [PyCharm](https://www.jetbrains.com/help/pycharm/configuring-project-structure.html) and [VS Code](https://code.visualstudio.com/docs/editor/multi-root-workspaces)
 
-#### Option 1: Install using Poetry
-1. Install poetry : https://python-poetry.org/docs/#installing-with-the-official-installer
-2. Install the dependencies : 
-```bash
-cd sn-gamestate
-poetry install
-poetry run mim install mmcv==2.0.1
-poetry shell
-```
 
-To enter the virtual environment created by Poetry, you can either use `poetry shell`,
-or prefix all commands by `poetry run`.
-
-#### Option 2: Install using conda
+#### Install using conda
 1. Install conda : https://docs.conda.io/projects/miniconda/en/latest/
 2. Create a new conda environment : 
 ```bash 
@@ -183,18 +170,12 @@ conda activate tracklab
 ```bash
 cd sn-gamestate
 pip install -e .
-pip install -e ../tracklab
+pip install -e ./tracklab
 mim install mmcv==2.0.1
 ```
 
-#### Updating
-Please make sure to check the official GitHub regularly for updates.
-To update this repository to its latest version, run `git pull` on both repositories:
-```bash
-git pull
-git -C ../tracklab pull
-```
 
+### Updating
 After updating, you should rerun the installation of the dependencies in case they are updated 
 (either running `poetry install` or *both* `pip install`'s).
 
