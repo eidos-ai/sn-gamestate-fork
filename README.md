@@ -248,7 +248,8 @@ You will need to set up some variables before running the code in [soccernet.yam
 
     
 #### MLFlow
-    Please execute the following commands to make sure mlflow can get the uri of the server and the user that's gonna do the tracking.
+    Please execute the following commands to make sure mlflow can get the uri of the server
+    and the user that's gonna do the tracking.
 ```bash
 export MLFLOW_TRACKING_USERNAME=SoccerNetGR2025
 export MLFLOW_TRACKING_PASSWORD=soccer2025
