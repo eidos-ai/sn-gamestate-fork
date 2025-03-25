@@ -23,15 +23,44 @@ def create_yolov8_dataset_folders(folder: str, yolo_dataset_path: str) -> None:
     print(f"Created YOLOv8 {folder} folders")
 
 
-def process_to_yolo(df, output_dir: str, dataset_type: str) -> None:
+def process_to_yolo(df: pd.DataFrame, output_dir: str, dataset_type: str) -> None:
     """
     Process dataframe and save images/labels in YOLO format using OpenCV
     
     Args:
-        df: Input DataFrame containing image and digit data
+        df: Input DataFrame containing image and digit data. Expected format:
+            - Each row must contain:
+              * 'image' dict with:
+                - 'bytes': image bytes (required)
+                - 'path': optional image path
+              * 'digits' dict with (optional for unlabeled data):
+                - 'bbox': list of bounding boxes [x_min, y_min, width, height]
         output_dir: Base output directory for YOLO dataset
         dataset_type: Subfolder name (train/valid/test)
+
+    Example DataFrame row:
+    {
+        'image': {
+            'bytes': b'\x89PNG...',  # actual image bytes
+            'path': 'image_1.png'    # optional
+        },
+        'digits': {
+            'bbox': [
+                [10, 20, 30, 40],   # x_min, y_min, width, height
+                [50, 60, 20, 30]     # another digit
+            ]
+        }
+    }
     """
+    # Validate input DataFrame structure
+    assert isinstance(df, pd.DataFrame), "Input must be a pandas DataFrame"
+    assert 'image' in df.columns, "DataFrame must contain 'image' column"
+    assert df['image'].apply(lambda x: isinstance(x, dict)).all(), "All 'image' entries must be dictionaries"
+    assert df['image'].apply(lambda x: 'bytes' in x).any(), "At least some images must have 'bytes' data"
+    
+    if 'digits' in df.columns:
+        assert df['digits'].apply(lambda x: isinstance(x, dict) or pd.isna(x)).all(), \
+            "'digits' entries must be either dictionaries or NaN"
     # Create output directories
     img_dir = os.path.join(output_dir, dataset_type, 'images')
     label_dir = os.path.join(output_dir, dataset_type, 'labels')
