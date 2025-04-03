@@ -1,7 +1,0 @@
-train: /home/federico/GameStateChallenge/data/YoloDataset/train/images
-test: /home/federico/GameStateChallenge/data/YoloDataset/test/images
-val: /home/federico/GameStateChallenge/data/YoloDataset/val/images
-
-nc: 1
-
-names: ['person']
