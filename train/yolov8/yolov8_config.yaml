@@ -1,0 +1,7 @@
+train: ./GameStateChallenge/data/YoloDataset/train/images
+test: ./GameStateChallenge/data/YoloDataset/test/images
+val: ./GameStateChallenge/data/YoloDataset/val/images
+
+nc: 1
+
+names: ['person']
