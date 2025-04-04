@@ -266,6 +266,11 @@ python -m tracklab.main -cn soccernet
 By default, this command will perform game state reconstruction on one SoccerNet validation sequence, display results in a .mp4 video saved on disk and print the final performance metric.
 As a reminder, the dataset and all model's weights will be downloaded automatically on the first run.
 
+You can specify the configs path to be used in the run with the following flag :
+```bash
+python -m tracklab.main -cn soccernet --config-dir=./sn_gamestate/configs
+```
+
 You can find all possible configuration groups at the top when running the following command :  
 ```bash
 python -m tracklab.main --help
