@@ -8,11 +8,12 @@ packages = [{include = "sn_gamestate"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
-tracklab = {path = "../tracklab", develop = true}
+tracklab = {path = "./tracklab", develop = true}
 easyocr = "^1.7.1"
 soccernet = "^0.1.55"
 torch = "1.13.1"
 torchvision = "0.14.1"
+mlflow = "2.21.3"
 tracklab-calibration = {path = "plugins/calibration", develop = true}
 prtreid = {git = "https://github.com/VlSomers/prtreid"}
 mmocr = "^1.0.1"
@@ -27,3 +28,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.plugins.tracklab_plugin]
 soccernet = "sn_gamestate.config_finder:ConfigFinder"
+#strong_sort = "tracklab.plugins.track.strong_sort"
+
+#[project.entry-points.tracklab_plugin]
+#strong_sort = "tracklab.plugins.track.strong_sort"
