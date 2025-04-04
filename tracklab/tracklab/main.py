@@ -5,6 +5,11 @@ import hydra
 import warnings
 import logging
 
+from pathlib import Path
+import hydra
+from hydra.utils import get_original_cwd
+import mlflow
+
 from tracklab.utils import monkeypatch_hydra, \
     progress  # needed to avoid complex hydra stacktraces when errors occur in "instantiate(...)"
 from hydra.utils import instantiate
@@ -19,7 +24,7 @@ log = logging.getLogger(__name__)
 
 warnings.filterwarnings("ignore")
 
-import mlflow
+
 @hydra.main(version_base=None, config_path="pkg://tracklab.configs", config_name="config")
 def main(cfg):
     print(cfg['dataset']['nvid'])
@@ -35,8 +40,9 @@ def main(cfg):
     })
     
     model_family = model_name.split(".")[0].split("_")[1]
-    print(f"familia es: {model_family}")
-    yaml_file_path = f"/home/federico/soccernet/sn-gamestate/sn_gamestate/configs/modules/bbox_detector/{model_family}.yaml"
+    
+    base_path = Path(get_original_cwd())
+    yaml_file_path = base_path / "sn_gamestate/configs/modules/bbox_detector" / f"{model_family}.yaml"
     # Log the YAML file as an artifact
     if os.path.exists(yaml_file_path):
         mlflow.log_artifact(yaml_file_path, "YOLO-yaml")
