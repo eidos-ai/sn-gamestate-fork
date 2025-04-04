@@ -171,6 +171,7 @@ conda activate tracklab
 cd sn-gamestate
 pip install -e .
 pip install -e ./tracklab
+pip install -e ./tracklab/plugins/track
 mim install mmcv==2.0.1
 ```
 
