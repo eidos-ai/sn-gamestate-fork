@@ -1,3 +1,4 @@
+from pathlib import Path
 import os
 
 # Set environment variables in the notebook
@@ -7,7 +8,6 @@ os.environ["MLFLOW_TRACKING_PASSWORD"] = "soccer2025"
 from torch.utils.data import DataLoader, Dataset
 import torch
 import pytorch_lightning as pl
-from pathlib import Path
 from typing import List, Tuple
 import torchvision.transforms as transforms
 from PIL import Image
@@ -16,15 +16,15 @@ from models.convnext import ConvNext
 from lightning.pytorch.loggers import MLFlowLogger
 
 class BinaryJerseyDataset(Dataset):
-    def __init__(self, positive_dir: str, negative_dir: str, transform=None):
+    def __init__(self, positive_dir: Path, negative_dir: Path, transform=None):
         """
         Args:
             positive_dir: Path to directory with positive samples
             negative_dir: Path to directory with negative samples
             transform: Optional transform to be applied
         """
-        self.positive_samples = [os.path.join(positive_dir, f) for f in os.listdir(positive_dir)]
-        self.negative_samples = [os.path.join(negative_dir, f) for f in os.listdir(negative_dir)]
+        self.positive_samples = list(positive_dir.glob('*'))
+        self.negative_samples = list(negative_dir.glob('*'))
         self.transform = transform
         self.all_samples = self.positive_samples + self.negative_samples
         self.labels = [1] * len(self.positive_samples) + [0] * len(self.negative_samples)
@@ -44,10 +44,10 @@ class BinaryJerseyDataset(Dataset):
 
 @dataclass
 class DatasetConfiguration:
-    train_positive: str  # Path to training positive samples
-    train_negative: str  # Path to training negative samples
-    test_positive: str   # Path to test positive samples
-    test_negative: str   # Path to test negative samples
+    train_positive: Path  # Path to training positive samples
+    train_negative: Path  # Path to training negative samples
+    test_positive: Path   # Path to test positive samples
+    test_negative: Path   # Path to test negative samples
 
 class BinaryJerseyTrainer(pl.LightningModule):
     def __init__(self, data_conf: DatasetConfiguration, model_name="convnextv2_nano.fcmae_ft_in1k", 
@@ -142,10 +142,10 @@ def train_binary(train_pos, train_neg, test_pos, test_neg,
                 epochs=10, batch_size=32, model_name="convnextv2_nano.fcmae_ft_in1k"):
     
     data_config = DatasetConfiguration(
-        train_positive=train_pos,
-        train_negative=train_neg,
-        test_positive=test_pos,
-        test_negative=test_neg
+        train_positive=Path(train_pos),
+        train_negative=Path(train_neg),
+        test_positive=Path(test_pos),
+        test_negative=Path(test_neg)
     )
     
     model = BinaryJerseyTrainer(data_config, model_name=model_name, batch_size=batch_size)
@@ -156,7 +156,7 @@ def train_binary(train_pos, train_neg, test_pos, test_neg,
         monitor="val_loss",         # Monitor validation loss (or another metric)
         save_top_k=1,               # Save the best model
         mode="min",                 # Save the checkpoint when validation loss is minimized
-        dirpath="./saved_models",   # Directory to save the checkpoint
+        dirpath=Path("./saved_models"),   # Directory to save the checkpoint
         filename=f"best_model_{model_name}",      # Checkpoint file name
     )
     
@@ -168,7 +168,7 @@ def train_binary(train_pos, train_neg, test_pos, test_neg,
         enable_checkpointing=True,
         callbacks=[checkpoint_callback],
         logger=mlf_logger,
-        default_root_dir="./saved_models"  # Custom save directory
+        default_root_dir=Path("./saved_models")  # Custom save directory
     )
     
     trainer.fit(model, model.train_loader)
@@ -189,4 +189,3 @@ if __name__ == "__main__":
         epochs = 40,
         model_name = args["model_name"]
     )
-    
