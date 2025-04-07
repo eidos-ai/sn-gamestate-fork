@@ -34,17 +34,39 @@ class MultiClassJerseyDataset(Dataset):
         self.classes = [f"{i}" for i in range(100)]
         self.class_to_idx = {cls_name: idx for idx, cls_name in enumerate(self.classes)}
         self.idx_to_class = {idx: cls for idx, cls in enumerate(self.classes)}
+        self.missing_classes, self.samples = self.__get_missing_classes_and_samples()
         
+    def __get_missing_classes_and_samples(self):
+        """
+    Scans the dataset directory structure to identify missing classes and collect valid samples.
+    
+    This function performs several key tasks:
+    1. Identifies class directories that are missing entirely
+    2. Collects all valid image files for existing classes
+    3. Validates that each class directory contains at least one valid sample
+    4. Provides diagnostic information about the dataset composition
+    
+    Returns:
+        tuple: A tuple containing two elements:
+            - set: Names of missing class directories (empty if all classes present)
+            - list: All valid samples as tuples of (file_path, class_index)
+            
+    Prints diagnostic information including:
+        - Total number of samples found
+        - Number of present classes
+        - List of missing classes (if any)
+        - Distribution of samples across classes
+    """
         # Track missing classes and samples
-        self.missing_classes = set()
-        self.samples = []
+        missing_classes = set()
+        samples = []
         valid_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.gif')
         
         # Scan directory structure
         for class_name in self.classes:
             class_dir = os.path.join(root_dir, class_name)
             if not os.path.isdir(class_dir):
-                self.missing_classes.add(class_name)
+                missing_classes.add(class_name)
                 continue
                 
             class_files = []
@@ -54,23 +76,24 @@ class MultiClassJerseyDataset(Dataset):
                         class_files.append(os.path.join(root, file))
             
             if not class_files:
-                self.missing_classes.add(class_name)
+                missing_classes.add(class_name)
                 continue
                 
             for file_path in class_files:
-                self.samples.append((
+                samples.append((
                     file_path,
                     self.class_to_idx[class_name]
                 ))
-
         # Print diagnostics
-        present_classes = set(self.classes) - self.missing_classes
-        print(f"Found {len(self.samples)} samples across {len(present_classes)} classes")
-        print(f"Missing classes ({len(self.missing_classes)}): {sorted(self.missing_classes)}")
+        present_classes = set(self.classes) - missing_classes
+        print(f"Found {len(samples)} samples across {len(present_classes)} classes")
+        print(f"Missing classes ({len(missing_classes)}): {sorted(missing_classes)}")
         
         # Calculate class distribution
-        class_counts = Counter([label for _, label in self.samples])
+        class_counts = Counter([label for _, label in samples])
         print("Class distribution:", class_counts.most_common())
+        
+        return missing_classes, samples
 
     def _pad_to_square(self, img):
         """Add padding to make the image square"""
@@ -123,7 +146,7 @@ class DatasetConfiguration:
     train_dir: str  # Path to training samples
     test_dir: str   # Path to test samples
 
-class MultiClassJerseyTrainer(pl.LightningModule):
+class MultiClassJerseyModule(pl.LightningModule):
     def __init__(self, data_conf: DatasetConfiguration, model_name="convnextv2_nano.fcmae_ft_in1k", 
                  batch_size=32, learning_rate=1e-4):
         super().__init__()
