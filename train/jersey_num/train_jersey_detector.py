@@ -149,7 +149,7 @@ def train_binary(train_pos, train_neg, test_pos, test_neg,
         test_negative=Path(test_neg)
     )
     
-    model = BinaryJerseyTrainer(data_config, model_name=model_name, batch_size=batch_size)
+    model = BinaryJerseyModule(data_config, model_name=model_name, batch_size=batch_size)
 
     checkpoint_callback = ModelCheckpoint(
         monitor="val_loss",         # Monitor validation loss (or another metric)
