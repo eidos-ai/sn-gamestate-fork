@@ -1,47 +1,69 @@
-import os
+from pathlib import Path
 import argparse
+from typing import List, Optional
 
-def generate_image_labels(parent_folder, output_file="image_labels.txt"):
+def generate_image_labels(parent_folder: Path, output_file: str = "image_labels.txt") -> None:
     """
     Generate a text file with image paths and their corresponding folder names as labels.
-    Skips folders named 'None' or '0'.
+    Skips folders named 'None' or '00' and Jupyter notebook checkpoints.
     
     Args:
-        parent_folder (str): Path to the parent folder containing child folders with images.
-        output_file (str): Name of the output text file.
+        parent_folder: Path to the parent folder containing child folders with images.
+        output_file: Name of the output text file (will be created in parent_folder).
+    
+    Returns:
+        None (writes output to file)
     """
-    with open(os.path.join(parent_folder,output_file), 'w') as f:
-        for root, dirs, files in os.walk(parent_folder):
-            # Skip '.ipynb_checkpoints' directories
-            if '.ipynb_checkpoints' in root.split(os.sep):
-                continue
-            # Get the immediate child folder name
-            current_dir = os.path.basename(root)
-            
-            # Skip if the folder is 'None' or '00'
-            if current_dir in ['None', '00']:
+    # Supported image extensions
+    IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.bmp', '.gif'}
+    
+    with open(parent_folder / output_file, 'w') as f:
+        for child_dir in parent_folder.iterdir():
+            if not child_dir.is_dir():
                 continue
                 
-            # Process each file in the directory
-            for file in files:
-                # Check if the file is an image (you can add more extensions if needed)
-                if file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')):
-                    # Get the relative path from the parent folder
-                    rel_path = os.path.relpath(os.path.join(root, file), parent_folder)
-                    # Replace path separator with '/' for consistency (optional)
-                    rel_path = rel_path.replace(os.sep, '/')
-                    # Write to the output file
-                    f.write(f"{rel_path} {current_dir}\n")
+            # Skip special directories
+            if child_dir.name in {'None', '00'} or '.ipynb_checkpoints' in child_dir.parts:
+                continue
+                
+            # Process each image file in the directory
+            for image_file in child_dir.glob('*'):
+                if image_file.suffix.lower() in IMAGE_EXTENSIONS:
+                    # Get relative path using forward slashes
+                    rel_path = image_file.relative_to(parent_folder).as_posix()
+                    f.write(f"{rel_path} {child_dir.name}\n")
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Generate image labels from folder structure.')
-    parser.add_argument('parent_folder', type=str, help='Path to the parent folder containing child folders with images')
-    parser.add_argument('--output', type=str, default="image_labels.txt", help='Output text file name (default: image_labels.txt)')
+def main() -> None:
+    """
+    Command-line interface for generating image labels from folder structure.
+    
+    Usage:
+        python generate_labels.py /path/to/parent_folder [--output labels.txt]
+    """
+    parser = argparse.ArgumentParser(
+        description='Generate image labels from folder structure.'
+    )
+    parser.add_argument(
+        'parent_folder', 
+        type=str, 
+        help='Path to the parent folder containing child folders with images'
+    )
+    parser.add_argument(
+        '--output', 
+        type=str, 
+        default="image_labels.txt",
+        help='Output text file name (default: image_labels.txt)'
+    )
     
     args = parser.parse_args()
+    parent_path = Path(args.parent_folder)
     
-    if not os.path.isdir(args.parent_folder):
-        print(f"Error: The specified parent folder does not exist: {args.parent_folder}")
+    if not parent_path.is_dir():
+        print(f"Error: The specified parent folder does not exist: {parent_path}")
     else:
-        generate_image_labels(args.parent_folder, args.output)
-        print(f"Successfully generated labels in {args.output}")
+        generate_image_labels(parent_path, args.output)
+        output_path = parent_path / args.output
+        print(f"Successfully generated labels in {output_path}")
+
+if __name__ == "__main__":
+    main()
