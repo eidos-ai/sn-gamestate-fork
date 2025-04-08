@@ -14,6 +14,7 @@ from PIL import Image
 from dataclasses import dataclass
 from models.convnext import ConvNext
 from lightning.pytorch.loggers import MLFlowLogger
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 class BinaryJerseyDataset(Dataset):
     def __init__(self, positive_dir: Path, negative_dir: Path, transform=None):
@@ -149,8 +150,6 @@ def train_binary(train_pos, train_neg, test_pos, test_neg,
     )
     
     model = BinaryJerseyTrainer(data_config, model_name=model_name, batch_size=batch_size)
-    
-    from pytorch_lightning.callbacks import ModelCheckpoint
 
     checkpoint_callback = ModelCheckpoint(
         monitor="val_loss",         # Monitor validation loss (or another metric)
