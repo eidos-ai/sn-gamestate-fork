@@ -4,14 +4,13 @@ import torch
 import hydra
 import warnings
 import logging
-
 from pathlib import Path
-import hydra
+from typing import Dict, Any, Optional
+
 from hydra.utils import get_original_cwd
 import mlflow
 
-from tracklab.utils import monkeypatch_hydra, \
-    progress  # needed to avoid complex hydra stacktraces when errors occur in "instantiate(...)"
+from tracklab.utils import monkeypatch_hydra, progress  # needed to avoid complex hydra stacktraces when errors occur in "instantiate(...)"
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 from tracklab.datastruct import TrackerState
@@ -26,12 +25,20 @@ warnings.filterwarnings("ignore")
 
 
 @hydra.main(version_base=None, config_path="pkg://tracklab.configs", config_name="config")
-def main(cfg):
+def main(cfg: Dict[str, Any]) -> int:
+    """Main entry point for the tracking pipeline.
+    
+    Args:
+        cfg: Configuration dictionary loaded from Hydra
+        
+    Returns:
+        int: Exit status code (0 for success)
+    """
     print(cfg['dataset']['nvid'])
     print(cfg['modules']['bbox_detector']['cfg']['path_to_checkpoint'].split('/')[-1])
     print(cfg)
     # Start the MLflow run explicitly
-    mlflow.start_run(experiment_id="833431500785556588")  # Replace with your experiment ID or name
+    mlflow.start_run(experiment_id="139603015997722009")  # Replace with your experiment ID or name
     model_name = cfg['modules']['bbox_detector']['cfg']['path_to_checkpoint'].split('/')[-1]
     # Log initial parameters
     mlflow.log_params({
@@ -98,13 +105,22 @@ def main(cfg):
     return 0
 
 
-def set_sharing_strategy():
+def set_sharing_strategy() -> None:
+    """Set PyTorch multiprocessing sharing strategy to 'file_system'."""
     torch.multiprocessing.set_sharing_strategy(
         "file_system"
     )
 
 
-def init_environment(cfg):
+def init_environment(cfg: Dict[str, Any]) -> str:
+    """Initialize the execution environment.
+    
+    Args:
+        cfg: Configuration dictionary
+        
+    Returns:
+        str: The device string ('cuda' or 'cpu')
+    """
     # For Hydra and Slurm compatibility
     progress.use_rich = cfg.use_rich
     set_sharing_strategy()  # Do not touch
@@ -126,11 +142,19 @@ def init_environment(cfg):
     return device
 
 
-def close_enviroment():
+def close_enviroment() -> None:
+    """Clean up the environment by finishing W&B run."""
     wandb.finish()
 
 
-def evaluate(cfg, evaluator, tracker_state):
+def evaluate(cfg: Dict[str, Any], evaluator: Any, tracker_state: TrackerState) -> None:
+    """Run evaluation on tracking results if conditions are met.
+    
+    Args:
+        cfg: Configuration dictionary
+        evaluator: The evaluator instance
+        tracker_state: Current tracker state
+    """
     if cfg.get("eval_tracking", True) and cfg.dataset.nframes == -1:
         log.info("Starting evaluation.")
         evaluator.run(tracker_state)
