@@ -1,76 +1,132 @@
-import os
+from pathlib import Path
 import argparse
+from typing import Optional, Dict, List, Tuple, Any
 from torch.utils.data import Dataset
 from PIL import Image
 from tqdm import tqdm
+import torch
 
 
 class SVHNDataset(Dataset):
-    def __init__(self, root, split, transform=None):
-        total = 0
-        capped_total = 0
+    def __init__(self, root: Path, split: str, transform: Optional[Any] = None) -> None:
+        """
+        SVHN Dataset loader with support for digit length capping.
+
+        Args:
+            root: Path to the root directory containing 'images' and 'labels' folders
+            split: Dataset split ('train', 'test', or 'valid')
+            transform: Optional torchvision transforms to apply
+        """
         self.root = root
         self.transform = transform
-        self.data = []
+        self.data: List[Dict[str, Any]] = []
+        
+        # Validate paths
+        images_folder = self.root / "images"
+        labels_folder = self.root / "labels"
+        if not images_folder.exists() or not labels_folder.exists():
+            raise FileNotFoundError("Dataset folder structure invalid - must contain 'images' and 'labels' subfolders")
 
-        images_folder = os.path.join(self.root, "images")
-        labels_folder = os.path.join(self.root, "labels")
+        images_split_folder = images_folder / split
+        labels_split_folder = labels_folder / split
 
-        images_split_folder = os.path.join(images_folder, split)
-        labels_split_folder = os.path.join(labels_folder, split)
+        total = 0
+        capped_total = 0
 
-        for filename in tqdm(
-            os.listdir(images_split_folder), desc=f"Loading {split} images"
+        for img_file in tqdm(
+            images_split_folder.glob("*.jpg"), 
+            desc=f"Loading {split} images"
         ):
-            if filename.lower().endswith(".jpg"):
-                total += 1
-                img_path = os.path.join(images_split_folder, filename)
-                label = self._get_label(labels_split_folder, filename)
-                # Check if label has maximum two digits
-                if len(label) <= 2:
-                    capped_total += 1
-                    self.data.append({"path": img_path, "label": int(label)})
+            total += 1
+            label = self._get_label(labels_split_folder, img_file.stem)
+            
+            # Only keep samples with 1-2 digit labels
+            if 1 <= len(label) <= 2:
+                capped_total += 1
+                self.data.append({
+                    "path": img_file,
+                    "label": int(label)
+                })
 
-        print("Total:", total)
-        print("Capped:", capped_total)
+        print(f"Total images: {total}")
+        print(f"Images with 1-2 digit labels: {capped_total}")
 
-    def _get_label(self, labels_folder, filename):
-        label = ""
-        txt_filename = os.path.splitext(filename)[0] + ".txt"
-        txt_filepath = os.path.join(labels_folder, txt_filename)
-        with open(txt_filepath, "r") as file:
-            for line in file:
-                digit = line.strip().split()[0]
-                label += digit
-        return label
+    def _get_label(self, labels_folder: Path, filename_stem: str) -> str:
+        """
+        Extract label from corresponding text file.
+        
+        Args:
+            labels_folder: Path to labels directory
+            filename_stem: Filename without extension
+            
+        Returns:
+            Concatenated digits as string
+        """
+        txt_file = labels_folder / f"{filename_stem}.txt"
+        label = []
+        
+        try:
+            with txt_file.open('r') as f:
+                for line in f:
+                    digit = line.strip().split()[0]
+                    label.append(digit)
+        except FileNotFoundError:
+            print(f"Warning: Missing label file {txt_file}")
+            return ""
+            
+        return "".join(label)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.data)
 
-    def __getitem__(self, idx):
-        img_path = self.data[idx]["path"]
-        label = self.data[idx]["label"]
-        original_image = Image.open(img_path)
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
+        """
+        Get dataset item by index.
+        
+        Args:
+            idx: Index of the item to retrieve
+            
+        Returns:
+            Tuple of (image_tensor, label)
+        """
+        item = self.data[idx]
+        img = Image.open(item["path"])
+        
         if self.transform:
-            image = self.transform(original_image)
-        return image, label
+            img = self.transform(img)
+            
+        return img, item["label"]
 
 
-def main():
+def main() -> None:
+    """
+    Command-line interface for SVHN dataset loader.
+    
+    Usage:
+        python svhn_loader.py --dataset_folder /path/to/svhn
+    """
     parser = argparse.ArgumentParser(description="DataLoader for SVHN dataset.")
     parser.add_argument(
-        "--dataset_folder", type=str, required=True, help="Path to the dataset folder"
+        "--dataset_folder",
+        type=str,
+        required=True,
+        help="Path to the dataset folder containing 'images' and 'labels' subfolders"
     )
     args = parser.parse_args()
 
-    if not os.path.exists(args.dataset_folder):
-        print("Error: Dataset folder does not exist.")
+    dataset_path = Path(args.dataset_folder)
+    if not dataset_path.exists():
+        print(f"Error: Dataset folder does not exist at {dataset_path}")
         return
 
-    dataset = SVHNDataset(root=args.dataset_folder, transform=None)
-
-    for idx in tqdm(range(len(dataset)), desc="Iterating over SVHN dataset"):
-        item = dataset[idx]
+    try:
+        dataset = SVHNDataset(root=dataset_path, split="train", transform=None)
+        
+        for idx in tqdm(range(len(dataset)), desc="Iterating over SVHN dataset"):
+            _ = dataset[idx]  # Process each item
+            
+    except Exception as e:
+        print(f"Error loading dataset: {e}")
 
 
 if __name__ == "__main__":
