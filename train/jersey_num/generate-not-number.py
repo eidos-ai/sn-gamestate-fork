@@ -1,10 +1,11 @@
-import os
 import json
-import numpy as np
-from tqdm import tqdm
-from PIL import Image
-import argparse
+from pathlib import Path
 from typing import Dict, List, Optional
+
+import numpy as np
+from PIL import Image
+from tqdm import tqdm
+import argparse
 
 
 def count_annotations(input_dataset_path: str) -> int:
@@ -18,26 +19,24 @@ def count_annotations(input_dataset_path: str) -> int:
         Total count of player and goalkeeper annotations found in all JSON files.
     """
     total_annotations = 0
+    input_path = Path(input_dataset_path)
 
     # Get list of folders containing 'SNGS' in their name
     folders = [
-        folder_name
-        for folder_name in os.listdir(input_dataset_path)
-        if "SNGS" in folder_name
+        folder for folder in input_path.iterdir() 
+        if folder.is_dir() and "SNGS" in folder.name
     ]
 
-    for folder_name in folders:
-        folder_path = os.path.join(input_dataset_path, folder_name)
-        json_path = os.path.join(folder_path, "Labels-GameState.json")
+    for folder in folders:
+        json_path = folder / "Labels-GameState.json"
 
         # Check if JSON file exists
-        if not os.path.isfile(json_path):
+        if not json_path.is_file():
             print(f"Error: JSON file '{json_path}' not found.")
             continue
 
         try:
-            with open(json_path, "r") as json_file:
-                data = json.load(json_file)
+            data = json.loads(json_path.read_text())
         except json.JSONDecodeError as e:
             print(f"Error parsing JSON file '{json_path}': {e}")
             continue
@@ -53,10 +52,7 @@ def count_annotations(input_dataset_path: str) -> int:
             ann
             for ann in data["annotations"]
             if "attributes" in ann
-            and (
-                ann["attributes"]["role"] == "player"
-                or ann["attributes"]["role"] == "goalkeeper"
-            )
+            and ann["attributes"]["role"] in ("player", "goalkeeper")
         ]
         total_annotations += len(annotations)
 
@@ -91,27 +87,26 @@ def process_dataset(
         cooldown_frames: Minimum frames between processing same player (redundancy control)
     """
     total_annotations = count_annotations(input_dataset_path)
+    input_path = Path(input_dataset_path)
+    output_path = Path(output_dataset_path)
 
     # Get list of folders containing 'SNGS' in their name
     folders = [
-        folder_name
-        for folder_name in os.listdir(input_dataset_path)
-        if "SNGS" in folder_name
+        folder for folder in input_path.iterdir() 
+        if folder.is_dir() and "SNGS" in folder.name
     ]
 
     with tqdm(total=total_annotations, desc="Processing") as pbar:
-        for folder_name in folders:
-            folder_path = os.path.join(input_dataset_path, folder_name)
-            json_path = os.path.join(folder_path, "Labels-GameState.json")
+        for folder in folders:
+            json_path = folder / "Labels-GameState.json"
 
             # Check if JSON file exists
-            if not os.path.isfile(json_path):
+            if not json_path.is_file():
                 print(f"Error: JSON file '{json_path}' not found.")
                 continue
 
             try:
-                with open(json_path, "r") as json_file:
-                    data = json.load(json_file)
+                data = json.loads(json_path.read_text())
             except json.JSONDecodeError as e:
                 print(f"Error parsing JSON file '{json_path}': {e}")
                 continue
@@ -159,7 +154,7 @@ def process_dataset(
                 if image_file_name is None:
                     continue
 
-                image_path: str = os.path.join(folder_path, "img1", image_file_name)
+                image_path = folder / "img1" / image_file_name
                 try:
                     image: Image.Image = Image.open(image_path)
                 except Exception as e:
@@ -176,23 +171,19 @@ def process_dataset(
                     continue
 
                 jersey_number: str = str(annotation["attributes"].get("jersey", "0"))
-                output_folder: str = os.path.join(output_dataset_path, jersey_number)
-                os.makedirs(output_folder, exist_ok=True)
-                output_file_path: str = os.path.join(
-                    output_folder, f"{annotation['id']}.jpg"
-                )
+                output_folder = output_path / jersey_number
+                output_folder.mkdir(parents=True, exist_ok=True)
+                output_file_path = output_folder / f"{annotation['id']}.jpg"
                 
-                if not os.path.exists(output_file_path):
+                if not output_file_path.exists():
                     try:
                         cropped_image.save(output_file_path)
                     except Exception as e:
                         print(f"Error saving image {output_file_path}: {e}")
                         # Fallback to saving in "00" folder if there's an error
-                        output_folder = os.path.join(output_dataset_path, "00")
-                        os.makedirs(output_folder, exist_ok=True)
-                        output_file_path = os.path.join(
-                            output_folder, f"{annotation['id']}.jpg"
-                        )
+                        output_folder = output_path / "00"
+                        output_folder.mkdir(parents=True, exist_ok=True)
+                        output_file_path = output_folder / f"{annotation['id']}.jpg"
                         try:
                             cropped_image.save(output_file_path)
                         except Exception as e:
@@ -229,20 +220,23 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    input_path = Path(args.input_path)
+    output_path = Path(args.output_path)
+
     # Check if input dataset path exists
-    if not os.path.exists(args.input_path):
-        print(f"Error: Input dataset path '{args.input_path}' does not exist.")
+    if not input_path.exists():
+        print(f"Error: Input dataset path '{input_path}' does not exist.")
         return
 
     # Create output directory if it doesn't exist
-    os.makedirs(args.output_path, exist_ok=True)
+    output_path.mkdir(parents=True, exist_ok=True)
 
     # Process the dataset
     process_dataset(
-        args.input_path,
-        args.output_path,
+        str(input_path),  # Convert to string for backward compatibility
+        str(output_path), # Convert to string for backward compatibility
         args.threshold,
-        args.cooldown_frames,
+        args.threshold,
     )
 
 
