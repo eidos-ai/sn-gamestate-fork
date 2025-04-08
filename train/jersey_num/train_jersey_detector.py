@@ -50,7 +50,7 @@ class DatasetConfiguration:
     test_positive: Path   # Path to test positive samples
     test_negative: Path   # Path to test negative samples
 
-class BinaryJerseyTrainer(pl.LightningModule):
+class BinaryJerseyModule(pl.LightningModule):
     def __init__(self, data_conf: DatasetConfiguration, model_name="convnextv2_nano.fcmae_ft_in1k", 
                  batch_size=32, learning_rate=1e-4):
         super().__init__()
