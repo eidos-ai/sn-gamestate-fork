@@ -23,7 +23,6 @@ log = logging.getLogger(__name__)
 
 warnings.filterwarnings("ignore")
 
-
 @hydra.main(version_base=None, config_path="pkg://tracklab.configs", config_name="config")
 def main(cfg: Dict[str, Any]) -> int:
     """Main entry point for the tracking pipeline.
@@ -34,11 +33,18 @@ def main(cfg: Dict[str, Any]) -> int:
     Returns:
         int: Exit status code (0 for success)
     """
-    print(cfg['dataset']['nvid'])
-    print(cfg['modules']['bbox_detector']['cfg']['path_to_checkpoint'].split('/')[-1])
-    print(cfg)
-    # Start the MLflow run explicitly
-    mlflow.start_run(experiment_id="139603015997722009")  # Replace with your experiment ID or name
+    #print(cfg['dataset']['nvid'])
+    #print(cfg['modules']['bbox_detector']['cfg']['path_to_checkpoint'].split('/')[-1])
+    #print(cfg)
+    
+    # Start the MLflow run
+    experiment_id = os.environ.get('MLFLOW_EXPERIMENT_ID', '139603015997722009')
+    try:
+        mlflow.start_run(experiment_id=experiment_id)
+        log.info(f"Started MLflow run with experiment ID: {experiment_id}")
+    except Exception as e:
+        log.error(f"Failed to start MLflow run with experiment ID {experiment_id}: {str(e)}")
+        raise 
     model_name = cfg['modules']['bbox_detector']['cfg']['path_to_checkpoint'].split('/')[-1]
     # Log initial parameters
     mlflow.log_params({
