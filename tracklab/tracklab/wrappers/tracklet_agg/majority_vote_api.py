@@ -35,7 +35,13 @@ class MajorityVoteTracklet(VideoLevelModule):
         
     @torch.no_grad()
     def process(self, detections: pd.DataFrame, metadatas: pd.DataFrame):
-        
+        #print("DETECTIONS")
+        #print(detections)
+        # print("JERSEY NUMBER")
+        # print("HEAD")
+        # print(detections[["jersey_number_detection","jersey_number_confidence","track_id"]].head(300))
+        # print("TAIL")
+        # print(detections[["jersey_number_detection","jersey_number_confidence","track_id"]].tail(300))
         detections[self.output_columns] = np.nan
         
         if "track_id" not in detections.columns:
@@ -44,8 +50,14 @@ class MajorityVoteTracklet(VideoLevelModule):
             tracklet = detections[detections.track_id == track_id]
             for attribute in self.attributes:
                 attribute_detection = tracklet[f"{attribute}_detection"]
+                #print(f"attribute detection: {attribute_detection}")
                 attribute_confidence = tracklet[f"{attribute}_confidence"]
-                attribute_value = [select_highest_voted_att(attribute_detection, attribute_confidence)] * len(tracklet)            
+                #print(f"attribute confidence: {attribute_confidence}")
+                # if attribute == "jersey_number":
+                #     print("TRACKLET")
+                #     print(tracklet[["jersey_number_detection","jersey_number_confidence","track_id"]])
+                attribute_value = [select_highest_voted_att(attribute_detection, attribute_confidence)] * len(tracklet)          
+                #print(f"Atribute value: {attribute_value}")
                 detections.loc[tracklet.index, attribute] = attribute_value
             
         return detections

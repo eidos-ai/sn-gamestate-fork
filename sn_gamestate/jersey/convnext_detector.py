@@ -215,4 +215,4 @@ class ConvNext2NumberDet(NumberDetector):
         with torch.no_grad():
             logits = self.model(tensor)
         probability = torch.sigmoid(logits).item()
-        return probability > self.threshold
+        return probability > self.threshold, probability

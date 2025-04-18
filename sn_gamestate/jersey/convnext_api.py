@@ -9,7 +9,7 @@ from typing import Tuple, Dict, Any, Optional
 from strhub.data.module import SceneTextDataModule
 from tracklab.utils.collate import default_collate, Unbatchable
 from tracklab.pipeline.detectionlevel_module import DetectionLevelModule
-
+import os
 from .convnext_detector import ConvNext2NumberDet
 
 log = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ class ConvNext(DetectionLevelModule):
         collate_fn: Function to collate data into batches.
     """
     input_columns = ["bbox_ltwh"]
-    output_columns = ["has_number"]
+    output_columns = ["has_number", "has_number_conf"]
     collate_fn = default_collate
 
     def __init__(self, batch_size: int, device=None, 
@@ -72,6 +72,7 @@ class ConvNext(DetectionLevelModule):
     @torch.no_grad()
     def process(self, batch, detections: pd.DataFrame, metadatas: pd.DataFrame):
         has_number = []
+        has_number_conf = []
         images_np = [img.cpu().numpy() for img in batch['img']]
 
         # Get batch predictions
@@ -80,11 +81,15 @@ class ConvNext(DetectionLevelModule):
         # Convert to list
         # has_number_list.extend(preds["has_number"].tolist())
         
-        for b in preds.values:
+        for b in preds["has_number"].values:
             has_number.append(b)
+            
+        for c in preds["has_number_conf"].values:
+            has_number_conf.append(c)
 
         # Assign to detections (assuming process is called sequentially)
         detections['has_number'] = has_number
+        detections['has_number_conf'] = has_number_conf
 
         return detections
         
@@ -105,11 +110,12 @@ class ConvNext(DetectionLevelModule):
         """
         save_dir.mkdir(parents=True, exist_ok=True)
         result = {
-            "has_number": []
+            "has_number": [],
+            "has_number_conf": []
         }
 
         for i, img in enumerate(images_np):
-            pred = self.model.detect(img)
+            pred, conf = self.model.detect(img)
                 
             if pred:
                 # Save visualization
@@ -126,5 +132,6 @@ class ConvNext(DetectionLevelModule):
                 #     #output_path = None  # Track failures if needed
 
             result["has_number"].append(pred)
+            result["has_number_conf"].append(conf)
 
         return pd.DataFrame(result)

@@ -24,6 +24,23 @@ DEFAULT_CHECKPOINT_PATH = Path(
     os.getenv("PARSEQ_CHECKPOINT_PATH", "/home/federico/parseq/outputs/parseq/with_wd0.1/checkpoints/epoch=12-step=377-val_accuracy=65.0406-val_NED=74.8347.ckpt") # the path is the default, if it is set as an env variable it will take the variable
 )
 
+import psutil
+import os
+from humanize import naturalsize  # For human-readable sizes
+
+def print_ram_usage():
+    """Prints current RAM usage statistics in a clean format"""
+    mem = psutil.virtual_memory()
+    
+    print("\n" + "="*50)
+    print(f"RAM Usage - PID {os.getpid()}")
+    print("="*50)
+    print(f"Total:     {naturalsize(mem.total)}")
+    print(f"Used:      {naturalsize(mem.used)} ({mem.percent}%)")
+    print(f"Available: {naturalsize(mem.available)}")
+    print(f"Active:    {naturalsize(mem.active)}")
+    print(f"Cached:    {naturalsize(mem.cached)}")
+    print("="*50)
 
 class PARSEQ(DetectionLevelModule):
     """A detection-level module for recognizing jersey numbers using PARSEQ model.
@@ -73,11 +90,15 @@ class PARSEQ(DetectionLevelModule):
     def preprocess(self, image: np.ndarray, detection: pd.Series, 
                    metadata: pd.Series) -> Dict[str, Any]:
         """Preprocess the image crop for jersey number recognition."""
+        print("PARSEQ START PREPROCESS")
+        print_ram_usage()
         l, t, r, b = detection.bbox.ltrb(
             image_shape=(image.shape[1], image.shape[0]), 
             rounded=True
         )
         crop = image[t:b, l:r]
+        print("PARSEQ END PREPROCESS")
+        print_ram_usage()
         return {
             "img": Unbatchable([crop]),
             "has_number": detection.get('has_number', False)
@@ -87,17 +108,18 @@ class PARSEQ(DetectionLevelModule):
     def process(self, batch: Dict[str, Any], detections: pd.DataFrame, 
                 metadatas: pd.DataFrame) -> pd.DataFrame:
         """Process a batch of images to recognize jersey numbers."""
+        print("PARSEQ START PROCESS")
+        print_ram_usage()
         jersey_number_detection = []
         jersey_number_confidence = []
         
         images = batch['img']
         has_numbers = batch['has_number']
-
         # Convert all images to numpy
-        images_np = [img.cpu().numpy() for img in images]
+        images_np = [img.cpu().detach().numpy() for img in images]
+        del batch['img']
         results = self.run_parseq_inference(images_np, has_numbers)
-        print("has_numbers!!!")
-        print(has_numbers)
+        del batch['has_number']
         #detections["jersey_number_detection"] = results["jersey_number_detection"]
         #detections["jersey_number_confidence"] = results["jersey_number_confidence"]
         for prediction in results["jersey_number_detection"].values:
@@ -107,6 +129,8 @@ class PARSEQ(DetectionLevelModule):
             
         detections['jersey_number_detection'] = jersey_number_detection
         detections['jersey_number_confidence'] = jersey_number_confidence
+        print("PARSEQ END PROCESS")
+        print_ram_usage()
         return detections
         #return self.run_parseq_inference(images_np, has_numbers)
 
@@ -133,12 +157,17 @@ class PARSEQ(DetectionLevelModule):
                 img_tensor = img_transform(pil_img).unsqueeze(0)#.to(self.device)
 
                 # Inference
-                pred = self.model(img_tensor).softmax(-1)
+                pred = self.model(img_tensor).softmax(-1).detach()
                 label, confidence = self.model.tokenizer.decode(pred)
                 detected_text = label[0]
                 conf_score = confidence[0].mean()
-                print(f"Detected text: {detected_text}")
-                print(f"confidence: {conf_score}")
+                # print(f"Detected text: {detected_text}")
+                # print(f"confidence: {conf_score}")
+                try:
+                    detected_text = int(detected_text)
+                except:
+                    detected_text = None
+                    conf_score = 0.0
                 # Visualization
                 draw = ImageDraw.Draw(pil_img)
                 try:
