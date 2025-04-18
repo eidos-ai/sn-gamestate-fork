@@ -87,14 +87,26 @@ class PARSEQ(DetectionLevelModule):
     def process(self, batch: Dict[str, Any], detections: pd.DataFrame, 
                 metadatas: pd.DataFrame) -> pd.DataFrame:
         """Process a batch of images to recognize jersey numbers."""
+        jersey_number_detection = []
+        jersey_number_confidence = []
+        
         images = batch['img']
         has_numbers = batch['has_number']
 
         # Convert all images to numpy
         images_np = [img.cpu().numpy() for img in images]
         results = self.run_parseq_inference(images_np, has_numbers)
-        detections["jersey_number_detection"] = results["jersey_number_detection"]
-        detections["jersey_number_confidence"] = results["jersey_number_confidence"]
+        print("has_numbers!!!")
+        print(has_numbers)
+        #detections["jersey_number_detection"] = results["jersey_number_detection"]
+        #detections["jersey_number_confidence"] = results["jersey_number_confidence"]
+        for prediction in results["jersey_number_detection"].values:
+            jersey_number_detection.append(prediction)
+        for prediction in results["jersey_number_confidence"].values:
+            jersey_number_confidence.append(prediction)
+            
+        detections['jersey_number_detection'] = jersey_number_detection
+        detections['jersey_number_confidence'] = jersey_number_confidence
         return detections
         #return self.run_parseq_inference(images_np, has_numbers)
 
@@ -110,7 +122,7 @@ class PARSEQ(DetectionLevelModule):
 
         for i, (img, has_number) in enumerate(zip(images_np, has_numbers)):
             if not has_number:
-                results["jersey_number_detection"].append(0)
+                results["jersey_number_detection"].append(None)
                 results["jersey_number_confidence"].append(0.0)
                 continue
 
