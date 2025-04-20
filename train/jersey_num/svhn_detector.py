@@ -137,7 +137,7 @@ class ConvNext2NumberDet(NumberDetector):
             model_path: Path to model checkpoint
             threshold: Classification threshold (0-1)
         """
-        self.model = BinaryJerseyTrainer.load_from_checkpoint(model_path)
+        self.model = BinaryJerseyModule.load_from_checkpoint(model_path)
         self.threshold = threshold
         self.transform = transforms.Compose([
             transforms.Resize(256),

@@ -47,3 +47,6 @@ tracklab = 'tracklab.main:main'
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+#[project.entry-points.tracklab_plugin]
+#strong_sort = "tracklab.plugins.track.strong_sort"
