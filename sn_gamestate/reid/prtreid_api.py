@@ -145,7 +145,7 @@ class PRTReId(DetectionLevelModule):
         )
         
         role_scores_ = []
-        role_scores_.append(role_cls_scores['globl'].cpu() if role_cls_scores is not None else None)
+        role_scores_.append(role_cls_scores['globl'].cpu().detach() if role_cls_scores is not None else None)
         role_scores_ = torch.cat(role_scores_, 0) if role_scores_[0] is not None else None
         roles = [torch.argmax(i).item() for i in role_scores_]
         roles = [self.inverse_role_mapping[index] for index in roles]
@@ -156,7 +156,7 @@ class PRTReId(DetectionLevelModule):
         body_masks = body_masks.cpu().detach().numpy()
 
         if self.use_keypoints_visibility_scores_for_reid:
-            kp_visibility_scores = batch["visibility_scores"].numpy()
+            kp_visibility_scores = batch["visibility_scores"].cpu().detach().numpy()
             if visibility_scores.shape[1] > kp_visibility_scores.shape[1]:
                 kp_visibility_scores = np.concatenate(
                     [np.ones((visibility_scores.shape[0], 1)), kp_visibility_scores],
@@ -168,7 +168,7 @@ class PRTReId(DetectionLevelModule):
             {
                 "embeddings": list(embeddings),
                 "visibility_scores": list(visibility_scores),
-                "body_masks": list(body_masks),
+                # "body_masks": list(body_masks),
                 "role_detection": roles,
                 "role_confidence": role_confidence,
             },

@@ -6,6 +6,8 @@ from pathlib import Path
 from tabulate import tabulate
 from tracklab.core import Evaluator as EvaluatorBase
 from tracklab.utils import wandb
+import mlflow
+import pandas as pd
 
 log = logging.getLogger(__name__)
 
@@ -96,7 +98,14 @@ class TrackEvalEvaluator(EvaluatorBase):
 
         # Run evaluation
         output_res, output_msg = evaluator.evaluate([dataset], metrics_list, show_progressbar=self.show_progressbar)
-
+        # Prepare table
+        tracklab_data = output_res['SoccerNetGS']['tracklab']
+        records = [{"video_id": key, "HOTA(0)": tracklab_data[key]['person']['HOTA']['HOTA(0)']}
+                   for key in tracklab_data if key.startswith("SNGS-") and 'HOTA(0)' in tracklab_data[key]['person']['HOTA']]        
+        df = pd.DataFrame(records)
+        # Log as MLflow table
+        mlflow.log_table(df, artifact_file="HOTA_by_video.json")
+        
         # Log results
         results = output_res[dataset.get_name()][tracker_name]
         #log.info("HELLOOOOOOO")
