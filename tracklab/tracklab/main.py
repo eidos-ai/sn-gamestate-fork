@@ -38,7 +38,7 @@ def main(cfg: Dict[str, Any]) -> int:
     #print(cfg)
     
     # Start the MLflow run
-    experiment_id = os.environ.get('MLFLOW_EXPERIMENT_ID', '139603015997722009')
+    experiment_id = os.environ.get('MLFLOW_EXPERIMENT_ID', '139603015997722009') # Benchmark-GameStateChallenge
     try:
         mlflow.start_run(experiment_id=experiment_id)
         log.info(f"Started MLflow run with experiment ID: {experiment_id}")
@@ -46,11 +46,19 @@ def main(cfg: Dict[str, Any]) -> int:
         log.error(f"Failed to start MLflow run with experiment ID {experiment_id}: {str(e)}")
         raise 
     model_name = cfg['modules']['bbox_detector']['cfg']['path_to_checkpoint'].split('/')[-1]
+
+    hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
+    run_folder = hydra_cfg['runtime']['output_dir']
     # Log initial parameters
     mlflow.log_params({
         "N_VID": cfg['dataset']['nvid'],
-        "MODEL_NAME": model_name
+        "MODEL_NAME": model_name,
+        "split": cfg['dataset']['eval_set'],
+        "load_file": cfg['state']['load_file'],
+        "output_folder": run_folder,
+        "entire_cfg": cfg
     })
+    
     
     model_family = model_name.split(".")[0].split("_")[1]
     

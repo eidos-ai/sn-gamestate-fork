@@ -28,19 +28,6 @@ import psutil
 import os
 from humanize import naturalsize  # For human-readable sizes
 
-def print_ram_usage():
-    """Prints current RAM usage statistics in a clean format"""
-    mem = psutil.virtual_memory()
-    
-    print("\n" + "="*50)
-    print(f"RAM Usage - PID {os.getpid()}")
-    print("="*50)
-    print(f"Total:     {naturalsize(mem.total)}")
-    print(f"Used:      {naturalsize(mem.used)} ({mem.percent}%)")
-    print(f"Available: {naturalsize(mem.available)}")
-    print(f"Active:    {naturalsize(mem.active)}")
-    print(f"Cached:    {naturalsize(mem.cached)}")
-    print("="*50)
 
 class PARSEQ(DetectionLevelModule):
     """A detection-level module for recognizing jersey numbers using PARSEQ model.
@@ -90,15 +77,11 @@ class PARSEQ(DetectionLevelModule):
     def preprocess(self, image: np.ndarray, detection: pd.Series, 
                    metadata: pd.Series) -> Dict[str, Any]:
         """Preprocess the image crop for jersey number recognition."""
-        print("PARSEQ START PREPROCESS")
-        print_ram_usage()
         l, t, r, b = detection.bbox.ltrb(
             image_shape=(image.shape[1], image.shape[0]), 
             rounded=True
         )
         crop = image[t:b, l:r]
-        print("PARSEQ END PREPROCESS")
-        print_ram_usage()
         return {
             "img": Unbatchable([crop]),
             "has_number": detection.get('has_number', False)
@@ -108,8 +91,6 @@ class PARSEQ(DetectionLevelModule):
     def process(self, batch: Dict[str, Any], detections: pd.DataFrame, 
                 metadatas: pd.DataFrame) -> pd.DataFrame:
         """Process a batch of images to recognize jersey numbers."""
-        print("PARSEQ START PROCESS")
-        print_ram_usage()
         jersey_number_detection = []
         jersey_number_confidence = []
         
@@ -129,8 +110,6 @@ class PARSEQ(DetectionLevelModule):
             
         detections['jersey_number_detection'] = jersey_number_detection
         detections['jersey_number_confidence'] = jersey_number_confidence
-        print("PARSEQ END PROCESS")
-        print_ram_usage()
         return detections
         #return self.run_parseq_inference(images_np, has_numbers)
 
@@ -143,7 +122,6 @@ class PARSEQ(DetectionLevelModule):
             "jersey_number_detection": [], 
             "jersey_number_confidence": []
         }
-
         for i, (img, has_number) in enumerate(zip(images_np, has_numbers)):
             if not has_number:
                 results["jersey_number_detection"].append(None)
@@ -159,30 +137,30 @@ class PARSEQ(DetectionLevelModule):
                 # Inference
                 pred = self.model(img_tensor).softmax(-1).detach()
                 label, confidence = self.model.tokenizer.decode(pred)
+                # print(f"ParSeq Detected label", label)
+                # print(f"ParSeq Detected confidence", confidence)
                 detected_text = label[0]
                 conf_score = confidence[0].mean()
-                # print(f"Detected text: {detected_text}")
-                # print(f"confidence: {conf_score}")
                 try:
-                    detected_text = int(detected_text)
+                    detected_text = str(int(detected_text))
                 except:
                     detected_text = None
                     conf_score = 0.0
                 # Visualization
-                draw = ImageDraw.Draw(pil_img)
-                try:
-                    font = ImageFont.truetype("arial.ttf", 24)
-                except IOError:
-                    font = ImageFont.load_default()
-                draw.text((10, 10), f"{detected_text} ({conf_score:.2f})", 
-                         font=font, fill="red")
+                # draw = ImageDraw.Draw(pil_img)
+                # try:
+                #     font = ImageFont.truetype("arial.ttf", 24)
+                # except IOError:
+                #     font = ImageFont.load_default()
+                # draw.text((10, 10), f"{detected_text} ({conf_score:.2f})", 
+                #          font=font, fill="red")
 
-                # Save
-                from datetime import datetime
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                output_path = save_dir / f"pred_{timestamp}_{i}.jpg"
-                pil_img.save(output_path)
-                print(f"Saved visualization to {output_path}")
+                # # Save
+                # from datetime import datetime
+                # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                # output_path = save_dir / f"pred_{timestamp}_{i}.jpg"
+                # pil_img.save(output_path)
+                # print(f"Saved visualization to {output_path}")
 
                 results["jersey_number_detection"].append(detected_text)
                 results["jersey_number_confidence"].append(float(conf_score))
