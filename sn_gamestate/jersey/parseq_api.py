@@ -122,7 +122,6 @@ class PARSEQ(DetectionLevelModule):
             "jersey_number_detection": [], 
             "jersey_number_confidence": []
         }
-
         for i, (img, has_number) in enumerate(zip(images_np, has_numbers)):
             if not has_number:
                 results["jersey_number_detection"].append(None)
@@ -142,21 +141,19 @@ class PARSEQ(DetectionLevelModule):
                 # print(f"ParSeq Detected confidence", confidence)
                 detected_text = label[0]
                 conf_score = confidence[0].mean()
-                # print(f"Detected text: {detected_text}")
-                # print(f"confidence: {conf_score}")
                 try:
-                    detected_text = int(detected_text)
+                    detected_text = str(int(detected_text))
                 except:
                     detected_text = None
                     conf_score = 0.0
                 # Visualization
-                draw = ImageDraw.Draw(pil_img)
-                try:
-                    font = ImageFont.truetype("arial.ttf", 24)
-                except IOError:
-                    font = ImageFont.load_default()
-                draw.text((10, 10), f"{detected_text} ({conf_score:.2f})", 
-                         font=font, fill="red")
+                # draw = ImageDraw.Draw(pil_img)
+                # try:
+                #     font = ImageFont.truetype("arial.ttf", 24)
+                # except IOError:
+                #     font = ImageFont.load_default()
+                # draw.text((10, 10), f"{detected_text} ({conf_score:.2f})", 
+                #          font=font, fill="red")
 
                 # # Save
                 # from datetime import datetime
