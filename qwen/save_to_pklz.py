@@ -25,6 +25,7 @@ def update_pklz(pklz_path_in: str, pklz_path_out: str, detections_path: str):
         for name in zin.namelist():
             if name.endswith(".pkl") and not name.endswith("_image.pkl"):
                 print(f"Processing {name}")
+                track_counter = 10000
                 video_id = os.path.splitext(os.path.basename(name))[0]
 
                 # load dataframe
@@ -43,7 +44,7 @@ def update_pklz(pklz_path_in: str, pklz_path_out: str, detections_path: str):
                         track_rows_idx = df.loc[mask].index.tolist()
 
                         # iterate over every segment in result
-                        for segment in qwen_detection.get("result", []):
+                        for i, segment in enumerate(qwen_detection.get("result", [])):
                             segment_start = segment['start_frame']
                             segment_end = segment['end_frame']
                             track_length = len(track_rows_idx)
@@ -62,14 +63,17 @@ def update_pklz(pklz_path_in: str, pklz_path_out: str, detections_path: str):
                                 jersey_number = None                                
                             try:
                                 val = int(jersey_number)
-                                if not (0 <= val <= 10000):
+                                if not (1 <= val <= 10000):
                                     jersey_number = None
                             except (ValueError, TypeError):
                                 jersey_number = None             
-                            assert jersey_number is None or 0 <= int(jersey_number) <= 10000
+                            assert jersey_number is None or 1 <= int(jersey_number) <= 10000
                             
                             df.loc[segment_indices, "jersey_number_detection"] = jersey_number
                             df.loc[segment_indices, "jersey_number_confidence"] = 0.77
+                            if i>0:
+                                df.loc[segment_indices, "track_id"] = track_counter
+                                track_counter-=1
 
                 # write modified dataframe to output zip
                 buf = io.BytesIO()
