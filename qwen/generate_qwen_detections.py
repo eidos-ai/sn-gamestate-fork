@@ -402,6 +402,10 @@ def main():
     # Load existing results if present
     if Path(args.referee_output).exists():
         referee_results = json.loads(Path(args.referee_output).read_text())
+        
+    # Load existing results if present
+    if Path(args.jersey_output).exists():
+        challenge_results = json.loads(Path(args.jersey_output).read_text())
 
     total_time = 0
     track_count = 0
@@ -416,12 +420,15 @@ def main():
                 continue
         
         for i, track in enumerate(track_detections, start=1):
+            print(f"Allocated: {torch.cuda.memory_allocated() / 1e9:.2f} GB")
+            print(f"Reserved: {torch.cuda.memory_reserved() / 1e9:.2f} GB")
+            torch.cuda.empty_cache()  # Releases unused cached memory (but not active tensors)
             clear_output(wait=True)
             print(f"Video {video_id} {video_idx}/{num_videos} - Track {i}/{len(track_detections)}")
             track_length = len(track.image_ids)
             
-            # Skip if already processed in referee classification
-            if video_id in referee_results and str(track.track_id) in referee_results[video_id]:
+            # Skip if already processed
+            if video_id in referee_results and str(track.track_id) in referee_results[video_id] and video_id in challenge_results and str(track.track_id) in challenge_results[video_id]:
                 continue
             
             # Initialize video entries if not present
@@ -437,6 +444,7 @@ def main():
                 }
                 referee_results[video_id][str(track.track_id)] = {
                     "track_length": track_length,
+                    "status": "too_short"
                 }
                 continue
 
@@ -508,7 +516,6 @@ def main():
     
 if __name__ == "__main__":
     main()
-    
     
 # def main():
 #     parser = argparse.ArgumentParser(description="Generate Qwen analysis for soccer tracks")
