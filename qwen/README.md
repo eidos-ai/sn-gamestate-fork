@@ -15,3 +15,13 @@ python generate_qwen_detections.py \
   --target_video="013"
   
  Target video can be None in which case all videos will be processed
+```
+## Working Command Example 
+
+```bash
+
+python generate_qwen_detections.py \
+--dataset_path="/home/federico/GameStateChallenge/data/SoccerNetGS/test" \
+--input_pklz="/home/federico/soccernet/sn-gamestate-fork/outputs/sn-gamestate-fork/2025-04-18/one/states/entire_test_ouryolo.pklz" \
+--output_pklz="../outputs/sn-gamestate-fork/2025-04-18/one/states/completo.pklz" \
+--target_video="116"
