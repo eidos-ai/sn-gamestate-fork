@@ -13,9 +13,9 @@ python generate_qwen_detections.py \
   --input_pklz="/path/to/input_state.pklz" \
   --output_pklz="/path/to/final_output.pklz" \
   --target_video="013"
-  
+```  
  Target video can be None in which case all videos will be processed
-```
+
 ## Working Command Example 
 
 ```bash
