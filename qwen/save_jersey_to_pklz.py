@@ -7,7 +7,7 @@ import pandas as pd
 from typing import Dict
 import io
 
-def update_pklz(pklz_path_in: str, pklz_path_out: str, detections_path: str):
+def save_jersey_to_pklz(pklz_path_in: str, pklz_path_out: str, detections_path: str, target_video_id:str|None):
     """
     Update a PKLZ file with jersey number detections from a JSON file.
     
@@ -15,6 +15,7 @@ def update_pklz(pklz_path_in: str, pklz_path_out: str, detections_path: str):
         pklz_path_in: Path to input PKLZ file
         pklz_path_out: Path to output PKLZ file
         detections_path: Path to JSON file containing detection results
+        target_video_id: Specific video ID to update
     """
     with open(detections_path) as f:
         results = json.load(f)
@@ -24,14 +25,16 @@ def update_pklz(pklz_path_in: str, pklz_path_out: str, detections_path: str):
 
         for name in zin.namelist():
             if name.endswith(".pkl") and not name.endswith("_image.pkl"):
-                print(f"Processing {name}")
                 track_counter = 10000
                 video_id = os.path.splitext(os.path.basename(name))[0]
 
                 # load dataframe
                 with zin.open(name) as f:
                     df = pickle.load(f)
-
+                
+                if target_video_id and target_video_id!=video_id:
+                    continue
+                print(f"Processing {name}")
                 # update jersey numbers and confidence
                 if video_id in results:
                     for track_id, qwen_detection in results[video_id].items():
@@ -42,9 +45,11 @@ def update_pklz(pklz_path_in: str, pklz_path_out: str, detections_path: str):
                         # rows belonging to this track
                         mask = df["track_id"] == float(track_id)
                         track_rows_idx = df.loc[mask].index.tolist()
-
+                        
+                        qwen_segments = qwen_detection.get("result", [])
+                        chat_log = qwen_detection.get("chat_log","no chat log")
                         # iterate over every segment in result
-                        for i, segment in enumerate(qwen_detection.get("result", [])):
+                        for i, segment in enumerate(qwen_segments):
                             segment_start = segment['start_frame']
                             segment_end = segment['end_frame']
                             track_length = len(track_rows_idx)
@@ -69,10 +74,17 @@ def update_pklz(pklz_path_in: str, pklz_path_out: str, detections_path: str):
                                 jersey_number = None             
                             assert jersey_number is None or 1 <= int(jersey_number) <= 10000
                             
+                            if jersey_number is not None:
+                                jersey_number = str(int(jersey_number))
+                            print(jersey_number, type(jersey_number))
                             df.loc[segment_indices, "jersey_number_detection"] = jersey_number
                             df.loc[segment_indices, "jersey_number_confidence"] = 0.77
-                            if i>0:
+                            if len(qwen_segments) > 1:
+                                # print(f"===== Video {video_id} Track {track_id}")
+                                # print(f"Segment {i} {jersey_number}: {segment_indices}")
                                 df.loc[segment_indices, "track_id"] = track_counter
+                                # print("segment indices")
+                                # print(segment_indices)
                                 track_counter-=1
 
                 # write modified dataframe to output zip
@@ -93,7 +105,7 @@ def main():
     
     args = parser.parse_args()
     
-    update_pklz(args.input, args.output, args.detections)
+    save_jersey_to_pklz(args.input, args.output, args.detections)
 
 if __name__ == "__main__":
     main()

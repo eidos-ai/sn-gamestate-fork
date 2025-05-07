@@ -325,3 +325,87 @@ def iou(boxA: List[float], boxB: List[float]) -> float:
     if unionArea == 0:
         return 0.0
     return interArea / unionArea
+
+
+def render_track_detection(
+    dataset_path: str,
+    video_id: str,
+    track: TrackDetection,
+    bbox_from: int | None = None,
+    bbox_to: int | None = None,
+    images_per_row: int = 10,
+    scale: float = 2.0,
+    margin: int = 1,
+) -> Image.Image:
+    import os, math
+    from math import floor, ceil
+    from PIL import Image, ImageDraw
+
+    img_folder = os.path.join(dataset_path, f"SNGS-{video_id}", "img1")
+
+    frames_bboxes = sorted(zip(track.image_ids, track.bboxes), key=lambda x: x[0])
+
+    if bbox_from is not None or bbox_to is not None:
+        bbox_from = 0 if bbox_from is None else bbox_from
+        bbox_to = len(frames_bboxes) - 1 if bbox_to is None else bbox_to
+        
+        track_length = len(track.image_ids)
+        if bbox_from > track_length:
+            raise Exception(f"Invalid interval, max frame is {track_length}")
+            
+        frames_bboxes = frames_bboxes[bbox_from : bbox_to + 1]
+    
+
+    loaded_images = []
+
+    for frame_id, bbox in frames_bboxes:
+        frame_num = str(frame_id)[-6:]
+        img_path = os.path.join(img_folder, f"{frame_num}.jpg")
+        if not os.path.exists(img_path):
+            continue
+
+        img = Image.open(img_path).convert("RGB")
+        draw = ImageDraw.Draw(img)
+        x, y, w, h = bbox.tolist() if hasattr(bbox, "tolist") else bbox
+        draw.rectangle([x, y, x + w, y + h], outline="red", width=3)
+
+        x1, y1 = int(floor(x)), int(floor(y))
+        x2, y2 = int(ceil(x + w)), int(ceil(y + h))
+
+        cropped = img.crop((x1, y1, x2, y2))
+        if scale != 1.0:
+            new_size = (int(cropped.width * scale), int(cropped.height * scale))
+            cropped = cropped.resize(new_size, Image.BICUBIC)
+
+        loaded_images.append(cropped)
+
+    if not loaded_images:
+        raise ValueError("No valid frames found for this track/interval.")
+
+    rows = math.ceil(len(loaded_images) / images_per_row)
+    row_heights = []
+    col_widths = [0] * images_per_row
+
+    for idx, img in enumerate(loaded_images):
+        row, col = divmod(idx, images_per_row)
+        if row == len(row_heights):
+            row_heights.append(0)
+        row_heights[row] = max(row_heights[row], img.height)
+        col_widths[col] = max(col_widths[col], img.width)
+
+    grid_width = sum(col_widths) + margin * (images_per_row - 1)
+    grid_height = sum(row_heights) + margin * (rows - 1)
+    grid_img = Image.new("RGB", (grid_width, grid_height), color="white")
+
+    y_offset = 0
+    for row in range(rows):
+        x_offset = 0
+        for col in range(images_per_row):
+            idx = row * images_per_row + col
+            if idx >= len(loaded_images):
+                break
+            grid_img.paste(loaded_images[idx], (x_offset, y_offset))
+            x_offset += col_widths[col] + margin
+        y_offset += row_heights[row] + margin
+
+    return grid_img
